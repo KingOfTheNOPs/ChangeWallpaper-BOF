@@ -1,0 +1,66 @@
+# Example BOF ChangeWallpaper beacon BOF 
+# The alias ChangeWallpaper enable the webdav client service on the host
+# Usage: ChangeWallpaper
+#
+# Example:
+#    ChangeWallpaper
+#
+
+
+beacon_command_register(
+"ChangeWallpaper",
+"Change the desktop wallpaper for the current user",
+"Usage: ChangeWallpaper <image path> [--revert XX] \
+ChangeWallpaper Example: \
+   ChangeWallpaper \\\\win10@80\\image.jpg --revert 20 \
+   ChangeWallpaper C:\\Windows\\Temp\\image.jpg \
+ChangeWallpaper Options: \
+    --revert XX, Revert to original wallpaper after specified time in seconds, replace the XX with time \
+    BOF currently sleeps for the duration specified therefore the beacon will be unavailble until after the time specified ");
+
+# $1 - beacon id
+# $2 - image path
+# $3 - --revert
+# $4 - time
+
+alias ChangeWallpaper {
+    local('$handle $data $args $revert_time $image_path');
+    # read in our BOF file...   
+    $handle = openf(script_resource("ChangeWallpaper.o"));
+    $data   = readb($handle, -1);
+    closef($handle);
+
+    if(strlen($data) == 0)
+    {
+        berror($1, "could not read bof file");
+        return;
+    }
+
+    # declare variables
+    $revert_time = 0;
+    $image_path = $2;
+
+    for ($i = 1; $i < size(@_); $i++)
+    {
+        if (@_[$i] eq "--revert")
+        {
+            # revert desktop wallpaper after specified time
+            $i++;
+            if($i >= size(@_))
+            {
+                berror($1, "missing --revert time value");
+                return;
+            }
+            # set the revert time
+            $revert_time = @_[$i];
+            if(!-isnumber $revert_time || $revert_time eq "0")
+            {
+                berror($1, "Invalid revert time: " . $revert_time);
+                return;
+            }
+        }
+    }
+    
+    $args = bof_pack($1, "zi", $image_path, $revert_time);
+    beacon_inline_execute($1, $data, "go", $args);
+}
